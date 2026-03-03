@@ -66,7 +66,7 @@ const response = await fetch('http://localhost:8081/api/execute', {
   },
   body: JSON.stringify({
     code: 'console.log("Hello, World!");',
-    language: 'javascript'
+    language: 'js'
   })
 });
 
@@ -151,7 +151,7 @@ Runtime supports multiple programming languages. Here are examples for each:
     ```json
     {
       "code": "const numbers = [1, 2, 3, 4, 5];\nconst sum = numbers.reduce((a, b) => a + b, 0);\nconsole.log('Sum:', sum);",
-      "language": "javascript"
+      "language": "js"
     }
     ```
   </Tab>

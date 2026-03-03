@@ -55,7 +55,7 @@ Returns an `ApiResponse` object containing the execution result.
 <CodeGroup>
 
 ```bash cURL
-curl -X POST http://localhost:8080/api/execute \
+curl -X POST http://localhost:8081/api/execute \
   -H "Content-Type: application/json" \
   -d '{
     "code": "print(\"Hello, World!\")",
@@ -64,7 +64,7 @@ curl -X POST http://localhost:8080/api/execute \
 ```
 
 ```javascript JavaScript
-fetch('http://localhost:8080/api/execute', {
+fetch('http://localhost:8081/api/execute', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ fetch('http://localhost:8080/api/execute', {
 import requests
 
 response = requests.post(
-    'http://localhost:8080/api/execute',
+    'http://localhost:8081/api/execute',
     json={
         'code': 'print("Hello, World!")',
         'language': 'python'
@@ -98,7 +98,7 @@ import java.net.URI;
 
 HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
-    .uri(URI.create("http://localhost:8080/api/execute"))
+    .uri(URI.create("http://localhost:8081/api/execute"))
     .header("Content-Type", "application/json")
     .POST(HttpRequest.BodyPublishers.ofString(
         "{\"code\":\"System.out.println(\\\"Hello, World!\\\");\",\"language\":\"java\"}"
@@ -117,7 +117,7 @@ System.out.println(response.body());
 ```json
 {
   "success": true,
-  "message": "Code executed successfully",
+  "message": "Code Executed successfully",
   "data": {
     "output": "Hello, World!\n",
     "exitCode": 0,
@@ -143,10 +143,10 @@ System.out.println(response.body());
 ```json
 {
   "success": true,
-  "message": "Code executed successfully",
+  "message": "Code Executed successfully",
   "data": {
     "output": "Main.java:1: error: ';' expected\nSystem.out.println(\"test\")\n                          ^\n1 error\n",
-    "exitCode": 1,
+    "exitCode": 0,
     "executionTime": 856
   }
 }
@@ -157,10 +157,10 @@ System.out.println(response.body());
 ```json
 {
   "success": true,
-  "message": "Code executed successfully",
+  "message": "Code Executed successfully",
   "data": {
-    "output": "Traceback (most recent call last):\n  File \"script.py\", line 1, in <module>\n    print(undefined_variable)\nNameError: name 'undefined_variable' is not defined\n",
-    "exitCode": 1,
+    "output": "Traceback (most recent call last):\n  File \"main.py\", line 1, in <module>\n    print(undefined_variable)\nNameError: name 'undefined_variable' is not defined\n",
+    "exitCode": 0,
     "executionTime": 423
   }
 }
@@ -173,7 +173,7 @@ System.out.println(response.body());
 </Note>
 
 <Warning>
-  Exit code `0` indicates successful execution. Non-zero exit codes indicate compilation errors, runtime errors, or other failures. Check the `output` field for error details.
+  The exit code is currently always `0` regardless of compilation or runtime errors. Check the `output` field for error details, which will contain compilation errors or runtime exceptions if your code fails.
 </Warning>
 
 <Tip>

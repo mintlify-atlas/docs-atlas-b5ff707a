@@ -12,14 +12,7 @@ The `ExecutionResult` model represents the outcome of a code execution operation
 </ResponseField>
 
 <ResponseField name="exitCode" type="int">
-  The process exit code returned by the executed program.
-  - `0` indicates successful execution
-  - Non-zero values indicate errors or abnormal termination
-  
-  Common exit codes:
-  - `1` - General errors
-  - `2` - Misuse of shell command
-  - `137` - Process killed (typically due to timeout or resource limits)
+  The exit code from the Docker container execution. Currently, this value is always set to `0` in the implementation, regardless of whether the code compiled or executed successfully. Check the `output` field for compilation errors or runtime exceptions.
 </ResponseField>
 
 <ResponseField name="executionTime" type="long">
@@ -43,7 +36,7 @@ The `ExecutionResult` model represents the outcome of a code execution operation
 ```json
 {
   "output": "Traceback (most recent call last):\n  File \"main.py\", line 1, in <module>\n    print(undefined_variable)\nNameError: name 'undefined_variable' is not defined\n",
-  "exitCode": 1,
+  "exitCode": 0,
   "executionTime": 856
 }
 ```
