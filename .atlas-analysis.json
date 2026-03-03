@@ -1,0 +1,81 @@
+{
+  "projectType": "api-service",
+  "projectName": "Runtime",
+  "projectDescription": "A secure code execution API service that runs code snippets in isolated Docker containers across multiple programming languages.",
+  "theme": "aspen",
+  "primaryColor": "#2563eb",
+  "lightColor": "#60a5fa",
+  "darkColor": "#1e40af",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/docker-execution",
+              "architecture/security"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/supported-languages",
+              "guides/setup",
+              "guides/deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/execute"
+            ]
+          },
+          {
+            "group": "Models",
+            "pages": [
+              "api/models/code-execution-request",
+              "api/models/execution-result",
+              "api/models/api-response"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Docker-based isolated code execution",
+    "Multi-language support (Java, Python, C, C++, JavaScript)",
+    "Resource limits (memory and CPU constraints)",
+    "REST API with Spring Boot",
+    "Execution time tracking",
+    "Automatic container cleanup"
+  ],
+  "publicApiSurface": [
+    "POST /api/execute - Execute code in a specified language",
+    "CodeExecutionRequest - Request model with code and language",
+    "ExecutionResult - Response model with output, exit code, and execution time",
+    "ApiResponse<T> - Generic API response wrapper"
+  ]
+}
