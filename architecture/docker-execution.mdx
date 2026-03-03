@@ -1,0 +1,342 @@
+---
+title: Docker Execution
+description: How Runtime executes code in isolated Docker containers
+---
+
+## Docker-Based Execution
+
+Runtime uses Docker containers to provide isolated, reproducible execution environments for each code snippet. Every execution runs in a fresh container that is created, executed, and destroyed automatically.
+
+## Docker Client Configuration
+
+The system connects to Docker using the Docker Java API client.
+
+**Location:** `DockerExecutorUtil.java:24-35`
+
+```java
+public DockerExecutorUtil() {
+    DefaultDockerClientConfig config = DefaultDockerClientConfig
+            .createDefaultConfigBuilder()
+            .withDockerHost("tcp://localhost:2375")
+            .build();
+
+    ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+            .dockerHost(config.getDockerHost())
+            .build();
+
+    this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
+}
+```
+
+<Info>
+The Docker daemon is accessed via TCP on port 2375. Ensure Docker is configured to listen on this port.
+</Info>
+
+## Execution Workflow
+
+### Step 1: Temporary Directory Setup
+
+Each execution gets a unique temporary directory to store source code.
+
+**Location:** `DockerExecutorUtil.java:41-46`
+
+```java
+String tempDirPath = System.getProperty("java.io.tmpdir") + "/code_" + UUID.randomUUID();
+Path tempDir = Paths.get(tempDirPath);
+Files.createDirectories(tempDir);
+
+String fileName = getFileName(language, code);
+Files.writeString(tempDir.resolve(fileName), code);
+```
+
+<Card title="Example" icon="folder">
+  **Path:** `/tmp/code_a3f8c9d2-4b7e-4a1f-9c3e-8d2f1a6b5c4e/`
+  
+  **Contents:** Source file (`Main.java`, `main.py`, etc.)
+</Card>
+
+### Step 2: Container Creation
+
+A Docker container is created with the appropriate image and resource limits.
+
+**Location:** `DockerExecutorUtil.java:48-58`
+
+```java
+String dockerImage = getDockerImage(language);
+String[] command = getRunCommand(language, code);
+
+CreateContainerResponse container = dockerClient.createContainerCmd(dockerImage)
+        .withCmd(command)
+        .withHostConfig(HostConfig.newHostConfig()
+                .withBinds(new Bind(tempDirPath, new Volume("/code")))
+                .withMemory(128 * 1024 * 1024L)
+                .withNanoCPUs(500_000_000L))
+        .withWorkingDir("/code")
+        .exec();
+
+String containerId = container.getId();
+```
+
+#### Volume Binding
+
+The temporary directory is mounted into the container at `/code`:
+
+```
+Host: /tmp/code_a3f8c9d2-4b7e-4a1f-9c3e-8d2f1a6b5c4e/
+  ↓ (bind mount)
+Container: /code/
+```
+
+### Step 3: Container Execution
+
+The container starts and waits for completion.
+
+**Location:** `DockerExecutorUtil.java:62-64`
+
+```java
+dockerClient.startContainerCmd(containerId).exec();
+System.out.println("Docker container started!!!");
+dockerClient.waitContainerCmd(containerId).start().awaitStatusCode();
+```
+
+### Step 4: Output Capture
+
+Both stdout and stderr streams are captured from the container logs.
+
+**Location:** `DockerExecutorUtil.java:68-84`
+
+```java
+StringBuilder output = new StringBuilder();
+StringBuilder error = new StringBuilder();
+
+dockerClient.logContainerCmd(containerId)
+        .withStdOut(true)
+        .withStdErr(true)
+        .exec(new com.github.dockerjava.api.async.ResultCallback.Adapter<Frame>() {
+            @Override
+            public void onNext(Frame frame) {
+                String log = new String(frame.getPayload());
+                if (frame.getStreamType().name().equals("STDOUT")) {
+                    output.append(log);
+                } else {
+                    error.append(log);
+                }
+            }
+        }).awaitCompletion();
+```
+
+### Step 5: Cleanup
+
+The container and temporary directory are removed.
+
+**Location:** `DockerExecutorUtil.java:86-88`
+
+```java
+dockerClient.removeContainerCmd(containerId).exec();
+System.out.println("Docker container removed!!!");
+deleteDirectory(tempDir.toFile());
+```
+
+<Warning>
+Containers are **always** removed after execution, even if the code fails. This prevents container buildup.
+</Warning>
+
+## Language-Specific Execution
+
+### Docker Images
+
+Each language uses a specific Docker image optimized for that runtime.
+
+**Location:** `DockerExecutorUtil.java:119-127`
+
+```java
+private String getDockerImage(String language) {
+    return switch (language.toLowerCase()) {
+        case "java"   -> "eclipse-temurin:17";
+        case "python" -> "python:3.11";
+        case "c", "cpp" -> "gcc:latest";
+        case "javascript"     -> "node:18";
+        default -> throw new IllegalArgumentException("Unsupported language: " + language);
+    };
+}
+```
+
+<CardGroup cols={2}>
+  <Card title="eclipse-temurin:17" icon="java">
+    Official Eclipse Temurin JDK 17 for Java execution
+  </Card>
+  <Card title="python:3.11" icon="python">
+    Official Python 3.11 image
+  </Card>
+  <Card title="gcc:latest" icon="c">
+    GCC compiler for C and C++ programs
+  </Card>
+  <Card title="node:18" icon="js">
+    Node.js 18 runtime for JavaScript
+  </Card>
+</CardGroup>
+
+### Execution Commands
+
+Each language has a specific command sequence for compilation and execution.
+
+**Location:** `DockerExecutorUtil.java:129-141`
+
+```java
+private String[] getRunCommand(String language, String code) {
+    return switch (language.toLowerCase()) {
+        case "java" -> {
+            String className = extractJavaClassName(code);
+            yield new String[]{"sh", "-c", "javac " + className + ".java && java " + className};
+        }
+        case "python" -> new String[]{"sh", "-c", "python main.py"};
+        case "c"      -> new String[]{"sh", "-c", "gcc main.c -o main && ./main"};
+        case "cpp"    -> new String[]{"sh", "-c", "g++ main.cpp -o main && ./main"};
+        case "javascript"     -> new String[]{"sh", "-c", "node main.js"};
+        default -> throw new IllegalArgumentException("Unsupported language: " + language);
+    };
+}
+```
+
+<Tabs>
+  <Tab title="Java">
+    ```bash
+    javac Main.java && java Main
+    ```
+    Compiles the `.java` file and runs the class
+  </Tab>
+  <Tab title="Python">
+    ```bash
+    python main.py
+    ```
+    Runs the Python script directly
+  </Tab>
+  <Tab title="C">
+    ```bash
+    gcc main.c -o main && ./main
+    ```
+    Compiles C code and executes the binary
+  </Tab>
+  <Tab title="C++">
+    ```bash
+    g++ main.cpp -o main && ./main
+    ```
+    Compiles C++ code and executes the binary
+  </Tab>
+  <Tab title="JavaScript">
+    ```bash
+    node main.js
+    ```
+    Runs JavaScript with Node.js
+  </Tab>
+</Tabs>
+
+### File Naming
+
+File names are determined based on the language and code content.
+
+**Location:** `DockerExecutorUtil.java:108-117`
+
+```java
+private String getFileName(String language, String code) {
+    return switch (language.toLowerCase()) {
+        case "java"   -> extractJavaClassName(code) + ".java";
+        case "python" -> "main.py";
+        case "c"      -> "main.c";
+        case "cpp"    -> "main.cpp";
+        case "javascript"     -> "main.js";
+        default -> throw new IllegalArgumentException("Unsupported language: " + language);
+    };
+}
+```
+
+<Accordion title="Java Class Name Extraction">
+  For Java code, the class name is extracted using regex pattern matching:
+  
+  **Location:** `DockerExecutorUtil.java:99-106`
+  
+  ```java
+  private String extractJavaClassName(String code) {
+      Pattern pattern = Pattern.compile("public\\s+class\\s+(\\w+)");
+      Matcher matcher = pattern.matcher(code);
+      if (matcher.find()) {
+          return matcher.group(1);
+      }
+      return "Main"; // fallback
+  }
+  ```
+  
+  This ensures the file name matches the public class name (e.g., `HelloWorld.java` for `public class HelloWorld`).
+</Accordion>
+
+## Resource Limits
+
+Every container is created with strict resource constraints:
+
+<ResponseField name="Memory" type="128MB">
+  Maximum RAM allocated per container: `128 * 1024 * 1024L` bytes
+</ResponseField>
+
+<ResponseField name="CPU" type="0.5 cores">
+  CPU limit in nanoseconds: `500_000_000L` (0.5 cores)
+</ResponseField>
+
+```java
+.withHostConfig(HostConfig.newHostConfig()
+    .withBinds(new Bind(tempDirPath, new Volume("/code")))
+    .withMemory(128 * 1024 * 1024L)      // 128MB
+    .withNanoCPUs(500_000_000L))          // 0.5 CPU cores
+```
+
+<Note>
+These limits prevent resource exhaustion and ensure fair usage across multiple concurrent executions.
+</Note>
+
+## Execution Result
+
+The execution result includes output, exit code, and timing information.
+
+**Location:** `DockerExecutorUtil.java:91-93`
+
+```java
+String finalOutput = !output.isEmpty() ? output.toString() : error.toString();
+ExecutionResult result = new ExecutionResult(finalOutput, 0, executionTime);
+return ApiResponse.success("Code Executed successfully", result);
+```
+
+**ExecutionResult Model:**
+
+```java
+public class ExecutionResult {
+    private String output;      // Combined stdout/stderr
+    private int exitCode;       // Process exit code
+    private long executionTime; // Time in milliseconds
+}
+```
+
+## Error Handling
+
+All exceptions during execution are caught and returned as error responses.
+
+**Location:** `DockerExecutorUtil.java:95-97`
+
+```java
+catch (Exception e) {
+    return ApiResponse.error("Execution failed: " + e.getMessage());
+}
+```
+
+<Check>
+**Graceful Degradation:** Even if execution fails, containers are cleaned up and a meaningful error message is returned to the client.
+</Check>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Security Features" href="/architecture/security" icon="shield">
+    Learn about isolation and security mechanisms
+  </Card>
+  <Card title="API Reference" href="/api/execute" icon="code">
+    View the execution API endpoint documentation
+  </Card>
+</CardGroup>

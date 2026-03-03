@@ -1,80 +1,238 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with Runtime in under 5 minutes - execute your first code snippet via the API
 ---
 
-## Get started in three steps
+# Quickstart
 
-Get your documentation site running locally and make your first customization.
+This guide will walk you through executing your first code snippet with Runtime. You'll learn how to make API requests and interpret the results.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+Before you begin, ensure you have:
+
+<Steps>
+  <Step title="Runtime server running">
+    The Runtime API server should be running on `http://localhost:8081`. See the [Setup Guide](/guides/setup) for installation instructions.
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    Verify the server is running:
+    ```bash
+    curl http://localhost:8081/api/execute
+    ```
+  </Step>
 
-### Step 2: Deploy your changes
+  <Step title="HTTP client">
+    You can use any HTTP client like cURL, Postman, or your favorite programming language's HTTP library.
+  </Step>
+</Steps>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+## Execute Your First Code
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+Let's execute a simple "Hello, World!" program in Python.
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+### Using cURL
 
-### Step 3: Go live
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:8081/api/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Hello, World!\")",
+    "language": "python"
+  }'
+```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+```python Python
+import requests
 
-## Next steps
+response = requests.post(
+    "http://localhost:8081/api/execute",
+    json={
+        "code": "print('Hello, World!')",
+        "language": "python"
+    }
+)
 
-Now that you have your docs running, explore these key features:
+result = response.json()
+print(f"Output: {result['data']['output']}")
+print(f"Execution time: {result['data']['executionTime']}ms")
+```
 
-<CardGroup cols={2}>
+```javascript JavaScript
+const response = await fetch('http://localhost:8081/api/execute', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    code: 'console.log("Hello, World!");',
+    language: 'javascript'
+  })
+});
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+const result = await response.json();
+console.log(`Output: ${result.data.output}`);
+console.log(`Execution time: ${result.data.executionTime}ms`);
+```
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+```java Java
+import java.net.http.*;
+import java.net.URI;
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+HttpClient client = HttpClient.newHttpClient();
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+String requestBody = """
+{
+  "code": "System.out.println(\\"Hello, World!\\");",
+  "language": "java"
+}
+""";
 
-</CardGroup>
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("http://localhost:8081/api/execute"))
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+    .build();
+
+HttpResponse<String> response = client.send(request, 
+    HttpResponse.BodyHandlers.ofString());
+
+System.out.println(response.body());
+```
+</CodeGroup>
+
+### Response
+
+You'll receive a JSON response with the execution results:
+
+```json
+{
+  "success": true,
+  "message": "Code Executed successfully",
+  "data": {
+    "output": "Hello, World!\n",
+    "exitCode": 0,
+    "executionTime": 1247
+  }
+}
+```
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  The `executionTime` is measured in milliseconds and includes container startup, code execution, and cleanup time.
 </Note>
+
+## Try Different Languages
+
+Runtime supports multiple programming languages. Here are examples for each:
+
+<Tabs>
+  <Tab title="Python">
+    ```json
+    {
+      "code": "for i in range(5):\n    print(f'Number: {i}')",
+      "language": "python"
+    }
+    ```
+  </Tab>
+
+  <Tab title="Java">
+    ```json
+    {
+      "code": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello from Java!\");\n    }\n}",
+      "language": "java"
+    }
+    ```
+    <Warning>
+      For Java, the class name must match the pattern in your code. The API automatically extracts the public class name.
+    </Warning>
+  </Tab>
+
+  <Tab title="JavaScript">
+    ```json
+    {
+      "code": "const numbers = [1, 2, 3, 4, 5];\nconst sum = numbers.reduce((a, b) => a + b, 0);\nconsole.log('Sum:', sum);",
+      "language": "javascript"
+    }
+    ```
+  </Tab>
+
+  <Tab title="C">
+    ```json
+    {
+      "code": "#include <stdio.h>\n\nint main() {\n    printf(\"Hello from C!\\n\");\n    return 0;\n}",
+      "language": "c"
+    }
+    ```
+  </Tab>
+
+  <Tab title="C++">
+    ```json
+    {
+      "code": "#include <iostream>\n\nint main() {\n    std::cout << \"Hello from C++!\" << std::endl;\n    return 0;\n}",
+      "language": "cpp"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Understanding the Response
+
+The API returns an `ApiResponse` wrapper containing the execution results:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the request was successful |
+| `message` | string | Human-readable status message |
+| `data` | object | The execution result (if successful) |
+| `data.output` | string | Combined stdout and stderr output |
+| `data.exitCode` | int | Process exit code (0 = success) |
+| `data.executionTime` | long | Execution time in milliseconds |
+
+## Error Handling
+
+If the code fails to execute, you'll receive an error response:
+
+```json
+{
+  "success": true,
+  "message": "Code Executed successfully",
+  "data": {
+    "output": "  File \"main.py\", line 1\n    print('Hello\nSyntaxError: unterminated string literal",
+    "exitCode": 0,
+    "executionTime": 892
+  }
+}
+```
+
+<Info>
+  Note that compilation and runtime errors are captured in the `output` field. The execution itself succeeds even if your code has errors.
+</Info>
+
+### Unsupported Language
+
+```json
+{
+  "success": false,
+  "message": "Unsupported language: ruby",
+  "data": null
+}
+```
+
+## Next Steps
+
+Now that you've executed your first code snippet, explore more:
+
+<CardGroup cols={2}>
+  <Card title="Supported Languages" icon="code" href="/guides/supported-languages">
+    Learn about all supported languages and their configurations
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/execute">
+    Explore the complete API documentation
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/architecture/overview">
+    Understand how Docker isolation works
+  </Card>
+  <Card title="Deployment" icon="server" href="/guides/deployment">
+    Deploy Runtime to production
+  </Card>
+</CardGroup>

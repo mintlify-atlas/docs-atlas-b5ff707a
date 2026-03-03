@@ -1,0 +1,306 @@
+---
+title: Setup Guide
+description: Step-by-step guide to set up and run the Runtime service locally
+---
+
+This guide walks you through setting up the Runtime service on your local development environment.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+<CardGroup cols={2}>
+  <Card title="Java" icon="java">
+    JDK 21 or higher
+  </Card>
+  <Card title="Maven" icon="box">
+    Apache Maven 3.6+
+  </Card>
+  <Card title="Docker" icon="docker">
+    Docker Engine with TCP socket enabled
+  </Card>
+  <Card title="Git" icon="git">
+    For cloning the repository
+  </Card>
+</CardGroup>
+
+<Warning>
+Docker must be configured to listen on `tcp://localhost:2375` for the service to communicate with Docker Engine.
+</Warning>
+
+## Docker Configuration
+
+The Runtime service connects to Docker via TCP socket. Configure Docker to expose the API:
+
+<Tabs>
+  <Tab title="Linux">
+    Edit the Docker daemon configuration:
+
+    ```bash
+    sudo nano /etc/docker/daemon.json
+    ```
+
+    Add the following configuration:
+
+    ```json
+    {
+      "hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2375"]
+    }
+    ```
+
+    Restart Docker:
+
+    ```bash
+    sudo systemctl restart docker
+    ```
+  </Tab>
+  <Tab title="macOS">
+    In Docker Desktop:
+    1. Open **Settings**
+    2. Navigate to **Advanced**
+    3. Enable **Allow the default Docker socket to be used**
+    4. Click **Apply & Restart**
+  </Tab>
+  <Tab title="Windows">
+    In Docker Desktop:
+    1. Open **Settings**
+    2. Navigate to **General**
+    3. Enable **Expose daemon on tcp://localhost:2375 without TLS**
+    4. Click **Apply & Restart**
+  </Tab>
+</Tabs>
+
+## Installation Steps
+
+<Steps>
+  <Step title="Clone the Repository">
+    ```bash
+    git clone <repository-url>
+    cd runtime
+    ```
+  </Step>
+
+  <Step title="Navigate to Backend Directory">
+    ```bash
+    cd backend
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Use Maven to download all required dependencies:
+
+    ```bash
+    mvn clean install
+    ```
+
+    This will install:
+    - Spring Boot 4.0.2 (Web MVC)
+    - Docker Java Client 3.3.6
+    - Lombok for Java annotations
+  </Step>
+
+  <Step title="Pull Docker Images">
+    Pre-pull the language runtime images to improve first execution performance:
+
+    ```bash
+    docker pull eclipse-temurin:17
+    docker pull python:3.11
+    docker pull gcc:latest
+    docker pull node:18
+    ```
+  </Step>
+
+  <Step title="Configure Application (Optional)">
+    The default configuration in `application.properties`:
+
+    ```properties
+    spring.application.name=backend
+    server.port=8081
+    ```
+
+    You can modify the port by editing `src/main/resources/application.properties`.
+  </Step>
+
+  <Step title="Run the Application">
+    Start the Spring Boot application:
+
+    ```bash
+    mvn spring-boot:run
+    ```
+
+    Or build and run the JAR:
+
+    ```bash
+    mvn package
+    java -jar target/engine-0.0.1-SNAPSHOT.jar
+    ```
+  </Step>
+</Steps>
+
+## Verify Installation
+
+Once the service is running, you should see:
+
+```bash
+Started BackendApplication in X.XXX seconds
+```
+
+Test the service with a simple request:
+
+```bash
+curl -X POST http://localhost:8081/api/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print('Hello, Runtime!')",
+    "language": "python"
+  }'
+```
+
+<Accordion title="Expected Response">
+  ```json
+  {
+    "success": true,
+    "message": "Code Executed successfully",
+    "data": {
+      "output": "Hello, Runtime!\n",
+      "exitCode": 0,
+      "executionTime": 1523
+    }
+  }
+  ```
+</Accordion>
+
+## Project Structure
+
+```
+backend/
+├── src/main/java/com/runtime/
+│   ├── BackendApplication.java          # Main Spring Boot application
+│   ├── controller/
+│   │   └── ExecutionController.java     # REST API endpoint
+│   ├── engine/
+│   │   ├── CodeExecutor.java           # Language executor registry
+│   │   ├── DockerExecutorUtil.java     # Docker container management
+│   │   ├── LanguageExecutor.java       # Executor interface
+│   │   └── executors/
+│   │       ├── BaseExecutor.java
+│   │       └── GeneralDockerExecutor.java
+│   ├── model/
+│   │   ├── ApiResponse.java            # Generic API response wrapper
+│   │   ├── CodeExecutionRequest.java   # Request DTO
+│   │   └── ExecutionResult.java        # Execution result DTO
+│   └── service/
+│       └── ExecutionService.java       # Business logic layer
+├── src/main/resources/
+│   └── application.properties          # Application configuration
+└── pom.xml                            # Maven dependencies
+```
+
+## Key Dependencies
+
+From `pom.xml`:
+
+<CodeGroup>
+```xml pom.xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.0.2</version>
+</parent>
+
+<properties>
+    <java.version>21</java.version>
+</properties>
+
+<dependencies>
+    <!-- Spring Boot Web MVC -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+    
+    <!-- Docker Java Client -->
+    <dependency>
+        <groupId>com.github.docker-java</groupId>
+        <artifactId>docker-java</artifactId>
+        <version>3.3.6</version>
+    </dependency>
+    
+    <!-- HTTP Client for Docker -->
+    <dependency>
+        <groupId>com.github.docker-java</groupId>
+        <artifactId>docker-java-transport-httpclient5</artifactId>
+        <version>3.3.6</version>
+    </dependency>
+    
+    <!-- Lombok -->
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <optional>true</optional>
+    </dependency>
+</dependencies>
+```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Docker connection failed">
+    **Error**: `Connect to localhost:2375 [localhost/127.0.0.1] failed`
+    
+    **Solution**: Ensure Docker is configured to listen on TCP port 2375. See [Docker Configuration](#docker-configuration) section.
+  </Accordion>
+
+  <Accordion title="Port already in use">
+    **Error**: `Port 8081 is already in use`
+    
+    **Solution**: Either stop the process using port 8081 or change the port in `application.properties`:
+    
+    ```properties
+    server.port=8082
+    ```
+  </Accordion>
+
+  <Accordion title="Maven build fails">
+    **Error**: `Failed to execute goal`
+    
+    **Solution**: Ensure you're using Java 21 or higher:
+    
+    ```bash
+    java -version
+    ```
+    
+    If needed, set `JAVA_HOME` to point to JDK 21.
+  </Accordion>
+
+  <Accordion title="Docker images not found">
+    **Error**: `Image not found: python:3.11`
+    
+    **Solution**: Pull the required images manually:
+    
+    ```bash
+    docker pull python:3.11
+    docker pull eclipse-temurin:17
+    docker pull gcc:latest
+    docker pull node:18
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Supported Languages" icon="code" href="/guides/supported-languages">
+    Learn about all supported programming languages
+  </Card>
+  <Card title="API Reference" icon="brackets-curly" href="/api/execute">
+    Explore the code execution API
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy Runtime to production
+  </Card>
+  <Card title="Security" icon="shield" href="/architecture/security">
+    Understand security features
+  </Card>
+</CardGroup>

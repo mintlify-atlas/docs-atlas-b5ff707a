@@ -1,0 +1,181 @@
+---
+title: "Execute Code"
+description: "Execute code snippets in isolated Docker containers"
+---
+
+## POST /api/execute
+
+Execute code in a secure, isolated Docker container. This endpoint supports multiple programming languages and returns the execution output, exit code, and execution time.
+
+### Request Body
+
+<ParamField body="code" type="string" required>
+  The source code to execute. Must be valid code for the specified language.
+</ParamField>
+
+<ParamField body="language" type="string" required>
+  The programming language of the code. Supported values:
+  - `java` - Java
+  - `python` - Python
+  - `c` - C
+  - `cpp` - C++
+  - `js` - JavaScript
+</ParamField>
+
+### Response
+
+Returns an `ApiResponse` object containing the execution result.
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the request was successful.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  A descriptive message about the execution result.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The execution result data. Only present when `success` is `true`.
+  
+  <ResponseField name="data.output" type="string" required>
+    The standard output from the code execution.
+  </ResponseField>
+  
+  <ResponseField name="data.exitCode" type="integer" required>
+    The exit code from the execution process. `0` indicates successful execution.
+  </ResponseField>
+  
+  <ResponseField name="data.executionTime" type="long" required>
+    The execution time in milliseconds.
+  </ResponseField>
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST http://localhost:8080/api/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Hello, World!\")",
+    "language": "python"
+  }'
+```
+
+```javascript JavaScript
+fetch('http://localhost:8080/api/execute', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    code: 'print("Hello, World!")',
+    language: 'python'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'http://localhost:8080/api/execute',
+    json={
+        'code': 'print("Hello, World!")',
+        'language': 'python'
+    }
+)
+
+print(response.json())
+```
+
+```java Java
+import java.net.http.*;
+import java.net.URI;
+
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("http://localhost:8080/api/execute"))
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(
+        "{\"code\":\"System.out.println(\\\"Hello, World!\\\");\",\"language\":\"java\"}"
+    ))
+    .build();
+
+HttpResponse<String> response = client.send(request, 
+    HttpResponse.BodyHandlers.ofString());
+System.out.println(response.body());
+```
+
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "message": "Code executed successfully",
+  "data": {
+    "output": "Hello, World!\n",
+    "exitCode": 0,
+    "executionTime": 1245
+  }
+}
+```
+
+### Error Responses
+
+#### Unsupported Language
+
+```json
+{
+  "success": false,
+  "message": "Unsupported language: ruby",
+  "data": null
+}
+```
+
+#### Compilation Error (Java example)
+
+```json
+{
+  "success": true,
+  "message": "Code executed successfully",
+  "data": {
+    "output": "Main.java:1: error: ';' expected\nSystem.out.println(\"test\")\n                          ^\n1 error\n",
+    "exitCode": 1,
+    "executionTime": 856
+  }
+}
+```
+
+#### Runtime Error (Python example)
+
+```json
+{
+  "success": true,
+  "message": "Code executed successfully",
+  "data": {
+    "output": "Traceback (most recent call last):\n  File \"script.py\", line 1, in <module>\n    print(undefined_variable)\nNameError: name 'undefined_variable' is not defined\n",
+    "exitCode": 1,
+    "executionTime": 423
+  }
+}
+```
+
+### Notes
+
+<Note>
+  Code execution happens in isolated Docker containers with resource limits applied. Each execution is ephemeral and containers are automatically cleaned up after execution.
+</Note>
+
+<Warning>
+  Exit code `0` indicates successful execution. Non-zero exit codes indicate compilation errors, runtime errors, or other failures. Check the `output` field for error details.
+</Warning>
+
+<Tip>
+  Execution time is measured in milliseconds and includes the time to spin up the container, compile (if needed), and execute the code.
+</Tip>

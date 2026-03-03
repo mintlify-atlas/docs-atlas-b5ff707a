@@ -1,0 +1,194 @@
+---
+title: Supported Languages
+description: Complete list of programming languages supported by the Runtime service
+---
+
+The Runtime service supports execution of code in **5 programming languages**, each running in isolated Docker containers with specific configurations.
+
+## Supported Languages
+
+<CardGroup cols={2}>
+  <Card title="Java" icon="java">
+    Compiled and executed using JDK 17
+  </Card>
+  <Card title="Python" icon="python">
+    Interpreted using Python 3.11
+  </Card>
+  <Card title="C" icon="c">
+    Compiled with GCC
+  </Card>
+  <Card title="C++" icon="code">
+    Compiled with G++
+  </Card>
+  <Card title="JavaScript" icon="js">
+    Executed with Node.js 18
+  </Card>
+</CardGroup>
+
+## Language Specifications
+
+### Java
+
+<AccordionGroup>
+  <Accordion title="Configuration Details">
+    - **Language Identifier**: `java` or `js` (in API requests)
+    - **File Extension**: `.java` (auto-detected from class name)
+    - **Docker Image**: `eclipse-temurin:17`
+    - **Compilation**: `javac [ClassName].java`
+    - **Execution**: `java [ClassName]`
+    - **Requirements**: Must include a public class declaration
+  </Accordion>
+</AccordionGroup>
+
+**Example:**
+
+```java
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+}
+```
+
+<Note>
+The class name is automatically extracted from the code using regex pattern matching. The file will be named based on the public class declaration.
+</Note>
+
+### Python
+
+<AccordionGroup>
+  <Accordion title="Configuration Details">
+    - **Language Identifier**: `python`
+    - **File Extension**: `.py`
+    - **File Name**: `main.py`
+    - **Docker Image**: `python:3.11`
+    - **Execution**: `python main.py`
+  </Accordion>
+</AccordionGroup>
+
+**Example:**
+
+```python
+print("Hello, World!")
+```
+
+### C
+
+<AccordionGroup>
+  <Accordion title="Configuration Details">
+    - **Language Identifier**: `c`
+    - **File Extension**: `.c`
+    - **File Name**: `main.c`
+    - **Docker Image**: `gcc:latest`
+    - **Compilation**: `gcc main.c -o main`
+    - **Execution**: `./main`
+  </Accordion>
+</AccordionGroup>
+
+**Example:**
+
+```c
+#include <stdio.h>
+
+int main() {
+    printf("Hello, World!\n");
+    return 0;
+}
+```
+
+### C++
+
+<AccordionGroup>
+  <Accordion title="Configuration Details">
+    - **Language Identifier**: `cpp`
+    - **File Extension**: `.cpp`
+    - **File Name**: `main.cpp`
+    - **Docker Image**: `gcc:latest`
+    - **Compilation**: `g++ main.cpp -o main`
+    - **Execution**: `./main`
+  </Accordion>
+</AccordionGroup>
+
+**Example:**
+
+```cpp
+#include <iostream>
+
+int main() {
+    std::cout << "Hello, World!" << std::endl;
+    return 0;
+}
+```
+
+### JavaScript
+
+<AccordionGroup>
+  <Accordion title="Configuration Details">
+    - **Language Identifier**: `javascript` or `js`
+    - **File Extension**: `.js`
+    - **File Name**: `main.js`
+    - **Docker Image**: `node:18`
+    - **Execution**: `node main.js`
+  </Accordion>
+</AccordionGroup>
+
+**Example:**
+
+```javascript
+console.log("Hello, World!");
+```
+
+## Resource Limits
+
+All containers are executed with the following resource constraints:
+
+<ResponseField name="Memory Limit" type="number">
+  128 MB (134,217,728 bytes)
+</ResponseField>
+
+<ResponseField name="CPU Limit" type="number">
+  0.5 CPU cores (500,000,000 nanoseconds)
+</ResponseField>
+
+<Warning>
+Code execution that exceeds these limits will be terminated by Docker to prevent resource exhaustion.
+</Warning>
+
+## Execution Flow
+
+For each code execution request:
+
+<Steps>
+  <Step title="File Creation">
+    Code is written to a temporary file with the appropriate extension in `/tmp/code_[UUID]/`
+  </Step>
+  <Step title="Container Setup">
+    Docker container is created with:
+    - Language-specific image
+    - Volume binding to the temporary directory
+    - Resource limits (memory and CPU)
+    - Working directory set to `/code`
+  </Step>
+  <Step title="Execution">
+    Container runs the compilation/execution command and captures output
+  </Step>
+  <Step title="Cleanup">
+    Container is removed and temporary files are deleted
+  </Step>
+</Steps>
+
+## Error Handling
+
+If an unsupported language is requested, the API returns:
+
+```json
+{
+  "success": false,
+  "message": "Unsupported language: [language]",
+  "data": null
+}
+```
+
+<Tip>
+Refer to the [API Reference](/api/execute) for details on making code execution requests.
+</Tip>

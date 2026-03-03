@@ -1,0 +1,56 @@
+---
+title: 'CodeExecutionRequest'
+description: 'Request model for code execution operations'
+---
+
+The `CodeExecutionRequest` model represents the payload sent to the code execution endpoint. It contains the code snippet and the programming language specification.
+
+## Fields
+
+<ResponseField name="code" type="string" required>
+  The source code to be executed. This can be a complete program or a code snippet depending on the language requirements.
+</ResponseField>
+
+<ResponseField name="language" type="string" required>
+  The programming language of the code. Supported values include:
+  - `java` - Java programming language
+  - `python` - Python programming language
+  - `c` - C programming language
+  - `cpp` - C++ programming language
+  - `javascript` - JavaScript (Node.js) programming language
+</ResponseField>
+
+## Example
+
+```json
+{
+  "code": "print('Hello, World!')",
+  "language": "python"
+}
+```
+
+## Java class
+
+This model is defined in the backend as:
+
+```java
+package com.runtime.model;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+public class CodeExecutionRequest {
+    private String code;
+    private String language;
+}
+```
+
+## Usage
+
+The `CodeExecutionRequest` is used as the request body when calling the `/api/execute` endpoint. See the [Execute Code](/api/execute) endpoint documentation for more details.
+
+<Warning>
+  Ensure the code is properly escaped when sending as JSON. Special characters like quotes and newlines must be properly formatted.
+</Warning>

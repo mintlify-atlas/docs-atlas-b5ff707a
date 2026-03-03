@@ -1,0 +1,128 @@
+---
+title: 'ApiResponse<T>'
+description: 'Generic wrapper model for all API responses'
+---
+
+The `ApiResponse<T>` is a generic wrapper model used to standardize all API responses. It provides a consistent structure that includes success status, message, and the actual data payload.
+
+## Fields
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the API request was successful.
+  - `true` - The operation completed successfully
+  - `false` - The operation failed or encountered an error
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  A human-readable message describing the result of the operation. This provides context about what happened, whether successful or an error occurred.
+</ResponseField>
+
+<ResponseField name="data" type="T">
+  The actual response payload. The type varies depending on the endpoint:
+  - For `/api/execute` endpoint, this is an `ExecutionResult` object
+  - For error responses, this field is `null`
+  
+  The generic type `T` allows this wrapper to be reused across different endpoints with different response types.
+</ResponseField>
+
+## Examples
+
+### Successful response
+
+```json
+{
+  "success": true,
+  "message": "Code executed successfully",
+  "data": {
+    "output": "Hello, World!\n",
+    "exitCode": 0,
+    "executionTime": 1234
+  }
+}
+```
+
+### Error response
+
+```json
+{
+  "success": false,
+  "message": "Unsupported language: ruby",
+  "data": null
+}
+```
+
+### Validation error
+
+```json
+{
+  "success": false,
+  "message": "Code cannot be empty",
+  "data": null
+}
+```
+
+## Java class
+
+This model is defined in the backend as:
+
+```java
+package com.runtime.model;
+
+public class ApiResponse<T> {
+    private boolean success;
+    private String message;
+    private T data;
+
+    public ApiResponse(boolean success, String message, T data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+    }
+
+    public static <T> ApiResponse<T> success(String message, T data) {
+        return new ApiResponse<>(true, message, data);
+    }
+
+    public static <T> ApiResponse<T> error(String message) {
+        return new ApiResponse<>(false, message, null);
+    }
+
+    // Getters and setters
+    public boolean isSuccess() { return success; }
+    public void setSuccess(boolean success) { this.success = success; }
+    
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
+    
+    public T getData() { return data; }
+    public void setData(T data) { this.data = data; }
+}
+```
+
+## Static factory methods
+
+The class provides two convenient static factory methods:
+
+### success()
+
+Creates a successful response with data:
+
+```java
+ApiResponse.success("Code executed successfully", executionResult)
+```
+
+### error()
+
+Creates an error response with no data:
+
+```java
+ApiResponse.error("Unsupported language: ruby")
+```
+
+## Usage
+
+All endpoints in the Runtime API use this wrapper to ensure consistent response formatting. Clients can always check the `success` field to determine if the operation succeeded before accessing the `data` field.
+
+<Tip>
+  Always check the `success` field before attempting to access the `data` field. When `success` is `false`, the `data` field will be `null`.
+</Tip>

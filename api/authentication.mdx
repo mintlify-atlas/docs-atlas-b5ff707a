@@ -1,0 +1,186 @@
+---
+title: Authentication
+description: Authentication and security information for the Runtime API
+---
+
+## Current Status
+
+The Runtime API currently **does not implement authentication**. All endpoints are publicly accessible without requiring API keys, tokens, or other credentials.
+
+<Warning>
+  Running the API without authentication in production environments poses security risks. It is strongly recommended to implement authentication before deploying to production.
+</Warning>
+
+## Making API Requests
+
+Since authentication is not currently required, you can make requests directly to any endpoint:
+
+```bash
+curl -X POST http://localhost:8081/api/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(42)",
+    "language": "python"
+  }'
+```
+
+No authentication headers are needed.
+
+## Security Considerations
+
+While the API lacks authentication, it implements several security measures:
+
+### Docker Isolation
+
+All code executes in isolated Docker containers, providing:
+
+- **Process isolation** - Code runs in a separate container environment
+- **Resource limits** - Memory and CPU constraints prevent resource exhaustion
+- **Network isolation** - Containers have restricted network access
+- **Automatic cleanup** - Containers are destroyed after execution
+
+### Input Validation
+
+The API validates all incoming requests to ensure:
+
+- Valid language specification
+- Proper request format
+- Non-empty code submissions
+
+## Recommended Security Measures
+
+For production deployments, consider implementing:
+
+<AccordionGroup>
+  <Accordion title="API Key Authentication">
+    Implement API key-based authentication using Spring Security. Clients would include an API key in request headers:
+
+    ```bash
+    curl -X POST http://localhost:8081/api/execute \
+      -H "X-API-Key: your-api-key-here" \
+      -H "Content-Type: application/json" \
+      -d '{...}'
+    ```
+  </Accordion>
+
+  <Accordion title="JWT Token Authentication">
+    Use JSON Web Tokens (JWT) for stateless authentication. Clients would obtain a token and include it in the Authorization header:
+
+    ```bash
+    curl -X POST http://localhost:8081/api/execute \
+      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+      -H "Content-Type: application/json" \
+      -d '{...}'
+    ```
+  </Accordion>
+
+  <Accordion title="Rate Limiting">
+    Implement rate limiting to prevent abuse:
+    - Limit requests per IP address
+    - Implement per-user quotas
+    - Use libraries like Bucket4j or Spring Cloud Gateway
+  </Accordion>
+
+  <Accordion title="Network Security">
+    Secure your deployment infrastructure:
+    - Use HTTPS/TLS for all communication
+    - Deploy behind a reverse proxy (nginx, Apache)
+    - Implement firewall rules
+    - Use VPC/private networks in cloud environments
+  </Accordion>
+</AccordionGroup>
+
+## Implementation Example
+
+To add basic API key authentication to the Runtime API, you would:
+
+1. **Add Spring Security dependency** to `pom.xml`
+2. **Create a SecurityConfig class** to configure authentication
+3. **Implement an API key filter** to validate keys
+4. **Update the controller** to require authentication
+
+<CodeGroup>
+```java SecurityConfig.java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+    
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .csrf().disable()
+            .authorizeRequests()
+            .anyRequest().authenticated()
+            .and()
+            .addFilterBefore(new ApiKeyAuthFilter(), 
+                           UsernamePasswordAuthenticationFilter.class);
+    }
+}
+```
+
+```java ApiKeyAuthFilter.java
+public class ApiKeyAuthFilter extends OncePerRequestFilter {
+    
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                  HttpServletResponse response,
+                                  FilterChain filterChain) 
+                                  throws ServletException, IOException {
+        String apiKey = request.getHeader("X-API-Key");
+        
+        if (apiKey == null || !isValidApiKey(apiKey)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+        
+        filterChain.doFilter(request, response);
+    }
+    
+    private boolean isValidApiKey(String apiKey) {
+        // Validate against your API key storage
+        return apiKey.equals(System.getenv("API_KEY"));
+    }
+}
+```
+</CodeGroup>
+
+<Info>
+  These are simplified examples for illustration. Production authentication should use proper key management, secure storage, and comprehensive error handling.
+</Info>
+
+## Best Practices
+
+When implementing authentication for the Runtime API:
+
+<Steps>
+  <Step title="Choose an authentication method">
+    Select an approach based on your use case (API keys for service-to-service, JWT for user-facing applications)
+  </Step>
+  
+  <Step title="Secure credential storage">
+    Store API keys and secrets in environment variables or secure vaults (never in code)
+  </Step>
+  
+  <Step title="Implement rate limiting">
+    Protect against abuse even with authenticated requests
+  </Step>
+  
+  <Step title="Enable HTTPS">
+    Always use TLS encryption for production traffic
+  </Step>
+  
+  <Step title="Monitor and log">
+    Track authentication attempts and failed requests for security monitoring
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Overview" icon="book" href="/api/overview">
+    Return to the API overview
+  </Card>
+  <Card title="Execute Endpoint" icon="code" href="/api/execute">
+    Learn about the code execution endpoint
+  </Card>
+</CardGroup>

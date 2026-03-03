@@ -1,0 +1,135 @@
+---
+title: API Overview
+description: Learn how to interact with the Runtime API to execute code in isolated Docker containers
+---
+
+## Introduction
+
+The Runtime API provides a simple REST interface for executing code snippets in isolated Docker containers across multiple programming languages. The API is built with Spring Boot and runs on port 8081 by default.
+
+## Base URL
+
+The API is available at:
+
+```
+http://localhost:8081/api
+```
+
+For production deployments, replace `localhost:8081` with your server's hostname and port.
+
+## API Architecture
+
+The Runtime API follows a straightforward request-response pattern:
+
+1. **Submit Code** - Send a code execution request with your code snippet and target language
+2. **Isolated Execution** - Code runs in a secure Docker container with resource limits
+3. **Receive Results** - Get output, exit code, and execution time in the response
+
+## Response Format
+
+All API responses follow a consistent wrapper format using the `ApiResponse<T>` structure:
+
+```json
+{
+  "success": true,
+  "message": "Execution successful",
+  "data": {
+    // Response data specific to the endpoint
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the API request was successful
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Human-readable message describing the result
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The actual response payload (type varies by endpoint)
+</ResponseField>
+
+## Supported Languages
+
+The Runtime API supports code execution in the following languages:
+
+- **Java** - JDK-based execution
+- **Python** - Python 3 interpreter
+- **C** - GCC compiler
+- **C++** - G++ compiler
+- **JavaScript** - Node.js runtime
+
+## Quick Example
+
+Here's a complete example of executing a Python script:
+
+```bash
+curl -X POST http://localhost:8081/api/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "print(\"Hello from Runtime!\")",
+    "language": "python"
+  }'
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Execution successful",
+  "data": {
+    "output": "Hello from Runtime!\n",
+    "exitCode": 0,
+    "executionTime": 245
+  }
+}
+```
+
+## Resource Limits
+
+All code executions are subject to resource constraints to ensure system stability:
+
+- **Memory** - Limited per container
+- **CPU** - Constrained CPU usage
+- **Execution Time** - Automatic timeout and cleanup
+- **Network** - Isolated network environment
+
+<Note>
+  Resource limits are enforced at the Docker container level. Long-running or resource-intensive code may be terminated automatically.
+</Note>
+
+## Error Handling
+
+When an error occurs, the API returns a response with `success: false`:
+
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "data": null
+}
+```
+
+Common error scenarios include:
+
+- Invalid or unsupported language
+- Code compilation errors
+- Runtime exceptions
+- Resource limit violations
+- Docker container failures
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/api/authentication">
+    Learn about API authentication and security
+  </Card>
+  <Card title="Execute Endpoint" icon="code" href="/api/execute">
+    Detailed documentation for the code execution endpoint
+  </Card>
+</CardGroup>
